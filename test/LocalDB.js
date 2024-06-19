@@ -1,11 +1,12 @@
 'use strict';
 
 var dynamoose = require('../');
-dynamoose.AWS.config.update({
-  accessKeyId: 'AKID',
-  secretAccessKey: 'SECRET',
-  region: 'us-east-1'
-});
+dynamoose.setRegion('us-east-1');
+// dynamoose.AWS.config.update({
+//   accessKeyId: 'AKID',
+//   secretAccessKey: 'SECRET',
+//   region: 'us-east-1'
+// });
 
 var should = require('should');
 
@@ -14,15 +15,22 @@ describe('Local DB tests', function () {
     dynamoose.local();
   });
 
-  it('Change to local dynamo db', function () {
+  it('Change to local dynamo db', async function () {
     dynamoose.dynamoDB = undefined;
     var dynamoDB = dynamoose.ddb();
-    should.equal(dynamoDB.endpoint.href, 'http://localhost:8000/');
+
+    var endpoint = await dynamoDB.config.endpoint();
+    should.equal(endpoint.hostname, 'localhost');
+    should.equal(endpoint.port, '8000');
+    should.equal(endpoint.protocol, 'http:');
 
     var expectURL = 'http://localhost:9000/';
     dynamoose.local(expectURL);
     dynamoDB = dynamoose.ddb();
 
-    should.equal(dynamoDB.endpoint.href, expectURL);
+    endpoint = await dynamoDB.config.endpoint();
+    should.equal(endpoint.hostname, 'localhost');
+    should.equal(endpoint.port, '9000');
+    should.equal(endpoint.protocol, 'http:');
    });
 });

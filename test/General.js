@@ -3,11 +3,12 @@
 //var util = require('util');
 
 var dynamoose = require('../');
-dynamoose.AWS.config.update({
-  accessKeyId: 'AKID',
-  secretAccessKey: 'SECRET',
-  region: 'us-east-1'
-});
+dynamoose.setRegion('us-east-1');
+// dynamoose.AWS.config.update({
+//   accessKeyId: 'AKID',
+//   secretAccessKey: 'SECRET',
+//   region: 'us-east-1'
+// });
 
 dynamoose.local();
 
