@@ -1,5 +1,6 @@
 'use strict';
 
+const { DescribeTableCommand } = require('@aws-sdk/client-dynamodb');
 
 var dynamoose = require('../');
 dynamoose.setRegion('us-east-1');
@@ -9,7 +10,7 @@ dynamoose.setRegion('us-east-1');
 //   region: 'us-east-1'
 // });
 
-dynamoose.local();
+dynamoose.local('http://localhost:4000');
 
 var Schema = dynamoose.Schema;
 var Table = dynamoose.Table;
@@ -92,7 +93,7 @@ describe('Table tests', function () {
     missing.describe(function (err, data) {
       should.exist(err);
       should.not.exist(data);
-      err.code.should.eql('ResourceNotFoundException');
+      err.name.should.eql('ResourceNotFoundException');
       done();
     });
   });
@@ -162,26 +163,48 @@ describe('Table tests', function () {
     tom_sawyer.save();
     var params = {TableName: 'DMSong'};
     setTimeout(function() {
-      dynamoose.ddb().describeTable(params, function (err, data) {
-        if (err) {
-          done(err);
-        }
-        else {
-          var found = false;
-          for (var i in data.Table.GlobalSecondaryIndexes) {
-            var gsi = data.Table.GlobalSecondaryIndexes[i];
-            if (gsi.IndexName === 'albumIndex') {
-              should.equal(gsi.Projection.ProjectionType, 'INCLUDE');
-              found = true;
-            }
+      const ddb = dynamoose.ddb();
+      const command = new DescribeTableCommand(params);
+      ddb.send(command).then(function (data) {
+        var found = false;
+        for (var i in data.Table.GlobalSecondaryIndexes) {
+          var gsi = data.Table.GlobalSecondaryIndexes[i];
+          if (gsi.IndexName === 'albumIndex') {
+            should.equal(gsi.Projection.ProjectionType, 'INCLUDE');
+            found = true;
           }
-          should.equal(found, true);
-          delete dynamoose.models.DMSong;
-          done();
         }
+        should.equal(found, true);
+        delete dynamoose.models.DMSong;
+        tom_sawyer.$__.table.delete(function () {
+          done();
+        });
+      }).catch(function (err) {
+        console.log(999, params, err);
+        done(err);
       });
+
+      // dynamoose.ddb().describeTable(params, function (err, data) {
+      //   if (err) {
+      //     done(err);
+      //   }
+      //   else {
+      //     var found = false;
+      //     for (var i in data.Table.GlobalSecondaryIndexes) {
+      //       var gsi = data.Table.GlobalSecondaryIndexes[i];
+      //       if (gsi.IndexName === 'albumIndex') {
+      //         should.equal(gsi.Projection.ProjectionType, 'INCLUDE');
+      //         found = true;
+      //       }
+      //     }
+      //     should.equal(found, true);
+      //     delete dynamoose.models.DMSong;
+      //     done();
+      //   }
+      // });
     }, 2000);
   });
+
   it('update DMSong with broader projection', function (done) {
     var Song = dynamoose.model('DMSong', {
         id: {
@@ -234,25 +257,47 @@ describe('Table tests', function () {
 
     var params = {TableName: 'DMSong'};
     setTimeout(function() {
-      dynamoose.ddb().describeTable(params, function (err, data) {
-        if (err) {
-          done(err);
-        }
-        else {
-          // console.log("---------------------REVISED TABLE");
-          // console.log(JSON.stringify(data, null, 2));
-          var found = false;
-          for (var i in data.Table.GlobalSecondaryIndexes) {
-            var gsi = data.Table.GlobalSecondaryIndexes[i];
-            if (gsi.IndexName === 'albumIndex') {
-              should.equal(gsi.Projection.ProjectionType, 'ALL');
-              found = true;
-            }
+      const ddb = dynamoose.ddb();
+      const command = new DescribeTableCommand(params);
+      ddb.send(command).then(function (data) {
+        // console.log("---------------------REVISED TABLE");
+        // console.log(JSON.stringify(data, null, 2));
+        var found = false;
+        for (var i in data.Table.GlobalSecondaryIndexes) {
+          var gsi = data.Table.GlobalSecondaryIndexes[i];
+          if (gsi.IndexName === 'albumIndex') {
+            should.equal(gsi.Projection.ProjectionType, 'ALL');
+            found = true;
           }
-          should.equal(found, true);
-          done();
         }
+        should.equal(found, true);
+
+        red_barchetta.$__.table.delete(function () {
+          done();
+        });
+      }).catch(function (err) {
+        done(err);
       });
+
+    //   dynamoose.ddb().describeTable(params, function (err, data) {
+    //     if (err) {
+    //       done(err);
+    //     }
+    //     else {
+    //       // console.log("---------------------REVISED TABLE");
+    //       // console.log(JSON.stringify(data, null, 2));
+    //       var found = false;
+    //       for (var i in data.Table.GlobalSecondaryIndexes) {
+    //         var gsi = data.Table.GlobalSecondaryIndexes[i];
+    //         if (gsi.IndexName === 'albumIndex') {
+    //           should.equal(gsi.Projection.ProjectionType, 'ALL');
+    //           found = true;
+    //         }
+    //       }
+    //       should.equal(found, true);
+    //       done();
+    //     }
+    //   });
     }, 2000);
   });
 });

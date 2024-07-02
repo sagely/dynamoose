@@ -9,7 +9,7 @@ dynamoose.setRegion('us-east-1');
 //   region: 'us-east-1'
 // });
 
-dynamoose.local();
+dynamoose.local('http://localhost:4000');
 
 var Schema = dynamoose.Schema;
 

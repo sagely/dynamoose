@@ -1,7 +1,7 @@
 'use strict';
 
 var DynamoDbLocal = require('dynamodb-local');
-var DYNAMO_DB_PORT = 8000;
+var DYNAMO_DB_PORT = 4000;
 
 module.exports = function(grunt) {
   grunt.initConfig({
@@ -54,8 +54,17 @@ module.exports = function(grunt) {
 
       DynamoDbLocal
       .launch(DYNAMO_DB_PORT)
-      .then(function() { done(); })
-      .catch(function(e) { done(e); });
+      .then(function() {
+        // give it 3 seconds to get up and running
+        setTimeout(function () {
+          console.log('DynamoDBLocal Started on port ', DYNAMO_DB_PORT);
+          done();
+        }, 3000);
+      })
+      .catch(function(e) {
+        console.log('DynamoDBLocal Error: ', e);
+        done(e);
+      });
     });
   });
 

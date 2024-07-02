@@ -1,5 +1,7 @@
 'use strict';
 
+var Q = require('q');
+const { PutItemCommand } = require('@aws-sdk/client-dynamodb');
 
 var dynamoose = require('../');
 dynamoose.setRegion('us-east-1');
@@ -9,7 +11,7 @@ dynamoose.setRegion('us-east-1');
 //   region: 'us-east-1'
 // });
 
-dynamoose.local();
+dynamoose.local('http://localhost:4000');
 
 var should = require('should');
 var CatsFixture = require('./fixtures/Cats');
@@ -22,7 +24,7 @@ var NINE_YEARS = 9*ONE_YEAR; // 9 years in seconds
 describe('Model', function (){
   this.timeout(15000);
   before(function(done) {
-    this.timeout(12000);
+    this.timeout(15000);
     dynamoose.setDefaults({ prefix: 'test-', suffix: '-db' });
     Cats = CatsFixture(dynamoose);
     done();
@@ -335,7 +337,10 @@ describe('Model', function (){
         falsyCat.should.have.property('age', 0);
         done();
       })
-      .catch(done);
+      .catch(function (err) {
+        should.not.exist(err);
+        done();
+      });
   });
 
   it('Get item with invalid key', function (done) {
@@ -351,21 +356,46 @@ describe('Model', function (){
   it('Get and Update corrupted item', function (done) {
 
     // create corrupted item
-    var req = dynamoose.ddb().putItem({
-      Item: {
-       "id": {
-         N: "7"
-        },
-       "isHappy": {
-         // this is the data corruption
-         S: "tue"
-        }
-      },
-      ReturnConsumedCapacity: "TOTAL",
-      TableName: Cats.Cat7.$__.table.name
-    });
+    function req () {
+      var deferred = Q.defer();
 
-    req.promise().then(function(){
+      var ddb = dynamoose.ddb();
+      const command = new PutItemCommand({
+        Item: {
+        "id": {
+          N: "7"
+          },
+        "isHappy": {
+          // this is the data corruption
+          S: "tue"
+          }
+        },
+        ReturnConsumedCapacity: "TOTAL",
+        TableName: Cats.Cat7.$__.table.name
+      });
+      ddb.send(command).then(function () {
+        deferred.resolve();
+      }).catch(function (err) {
+        deferred.reject(err);
+      });
+      return deferred.promise;
+    }
+
+    // var req = dynamoose.ddb().putItem({
+    //   Item: {
+    //    "id": {
+    //      N: "7"
+    //     },
+    //    "isHappy": {
+    //      // this is the data corruption
+    //      S: "tue"
+    //     }
+    //   },
+    //   ReturnConsumedCapacity: "TOTAL",
+    //   TableName: Cats.Cat7.$__.table.name
+    // });
+
+    req().then(function(){
       return Cats.Cat7.get(7);
     }).catch(function(err){
       should.exist(err.message);
@@ -508,7 +538,7 @@ describe('Model', function (){
         conditionValues: { name: 'Muffin' }
       }, function (err) {
         should.exist(err);
-        err.code.should.eql('ConditionalCheckFailedException');
+        err.name.should.eql('ConditionalCheckFailedException');
 
         Cats.Cat.get({id: 1}, {consistent: true}, function(err, badCat) {
           should.not.exist(err);
@@ -754,9 +784,8 @@ describe('Model', function (){
 
   it('Static Delete with update failure', function (done) {
     Cats.Cat.delete(666, { update: true }, function (err) {
-      should.exist(err);
-      err.statusCode.should.eql(400);
-      err.code.should.eql('ConditionalCheckFailedException');
+      err.$metadata.httpStatusCode.should.eql(400);
+      err.name.should.eql('ConditionalCheckFailedException');
       done();
     });
   });

@@ -12,7 +12,7 @@ var should = require('should');
 
 describe('Local DB tests', function () {
   afterEach(function() {
-    dynamoose.local();
+    dynamoose.local('http://localhost:4000');
   });
 
   it('Change to local dynamo db', async function () {
@@ -21,7 +21,7 @@ describe('Local DB tests', function () {
 
     var endpoint = await dynamoDB.config.endpoint();
     should.equal(endpoint.hostname, 'localhost');
-    should.equal(endpoint.port, '8000');
+    should.equal(endpoint.port, '4000');
     should.equal(endpoint.protocol, 'http:');
 
     var expectURL = 'http://localhost:9000/';
